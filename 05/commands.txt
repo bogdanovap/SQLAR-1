@@ -1,0 +1,60 @@
+cd /var/lib/postgresql/data/
+mkdir certs
+cd certs
+mkdir server
+cd server
+
+# Make a self-signed server CA.
+openssl req -sha256 -new -x509 -days 365 -nodes \
+    -out server-ca.crt \
+    -keyout server-ca.key
+
+# Generate server CSR. Put the hostname you will be using to connect to
+# the database in the CN field.
+openssl req -sha256 -new -nodes \
+    -subj "/CN=localhost" \
+    -out server.csr \
+    -keyout server.key
+
+# Sign a server certificate.
+openssl x509 -req -sha256 -days 365 \
+    -in server.csr \
+    -CA server-ca.crt \
+    -CAkey server-ca.key \
+    -CAcreateserial \
+    -out server.crt
+	
+	
+cd ..
+mkdir client
+cd client
+# Make a self-signed client CA.
+openssl req -sha256 -new -x509 -days 365 -nodes \
+    -out client-ca.crt \
+    -keyout client-ca.key
+
+# Generate client CSR. CN must contain the name of the database role you
+# will be using to connect to the database.
+openssl req -sha256 -new -nodes \
+    -subj "/CN=netology" \
+    -out client.csr \
+    -keyout server.key
+
+# Sign a client certificate.
+openssl x509 -req -sha256 -days 365 \
+    -in client.csr \
+    -CA client-ca.crt \
+    -CAkey client-ca.key \
+    -CAcreateserial \
+    -out client.crt
+
+
+psql "host=localhost \
+    user=netology \
+    dbname=postgres \
+    sslmode=verify-full \
+    sslrootcert=/var/lib/postgresql/data//certs/server/server-ca.crt \
+    sslcert=/var/lib/postgresql/data/certs/client/client-ca.crt \
+    sslkey=/var/lib/postgresql/data/certs/client/client-ca.key"
+
+psql "service=postgres_ssl"
